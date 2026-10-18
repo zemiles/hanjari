@@ -38,3 +38,47 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew build sonar
+
+      # ▼ 추가 1: 빌드된 jar를 다음 작업에 넘기기
+      - name: Upload api jar
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-jar
+          path: api/build/libs/hanjari-api.jar
+          retention-days: 1
+
+  # ▼ 추가 2: ARM 이미지 빌드 후 GHCR에 푸시
+  image:
+    name: Build and push image
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/zemiles/hanjari-api
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download api jar
+        uses: actions/download-artifact@v8
+        with:
+          name: api-jar
+          path: api/build/libs
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build and push
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            -t "$IMAGE:$GITHUB_SHA" \
+            -t "$IMAGE:latest" \
+            api
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"
