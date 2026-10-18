@@ -110,6 +110,7 @@ jobs:
         run: |
           scp deploy/docker-compose.prod.yml "$TARGET:hanjari/compose.yml"
           scp deploy/Caddyfile "$TARGET:hanjari/Caddyfile"
+          scp -r deploy/monitoring "$TARGET:hanjari/"
 
       - name: Deploy and health check
         env:
@@ -135,3 +136,54 @@ jobs:
           docker compose logs --tail=100 api
           exit 1
           EOF
+
+  notify:
+    name: Notify Slack
+    needs: [build, image, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack message
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          IMAGE_RESULT: ${{ needs.image.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL이 없어서 알림을 건너뜁니다."
+            exit 0
+          fi
+
+          escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
+          RESULTS="$BUILD_RESULT $IMAGE_RESULT $DEPLOY_RESULT"
+          if [[ "$RESULTS" == *failure* ]]; then
+            STATUS=":x: *실패*"
+          elif [[ "$RESULTS" == *cancelled* ]]; then
+            STATUS=":white_circle: *취소됨*"
+          elif [ "$DEPLOY_RESULT" = "success" ]; then
+            STATUS=":rocket: *배포 완료*"
+          else
+            STATUS=":white_check_mark: *CI 통과*"
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            TITLE="PR: $(escape "$PR_TITLE")"
+            LINK="$PR_URL"
+          else
+            TITLE="$(escape "$(printf '%s' "$COMMIT_MESSAGE" | head -n 1)")"
+            LINK="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+          fi
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          TEXT="$STATUS · $GITHUB_REPOSITORY
+          <$LINK|${GITHUB_SHA:0:7}> $TITLE ($GITHUB_ACTOR)
+          빌드: $BUILD_RESULT · 이미지: $IMAGE_RESULT · 배포: $DEPLOY_RESULT
+          <$RUN_URL|실행 로그 보기>"
+
+          jq -n --arg text "$TEXT" '{text: $text}' \
+            | curl -fsS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
