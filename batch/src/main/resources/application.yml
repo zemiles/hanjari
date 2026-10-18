@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: hanjari-batch
+  config:
+    import: classpath:hanjari-core.yml

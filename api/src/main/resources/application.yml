@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: hanjari-api
+  config:
+    import: classpath:hanjari-core.yml
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
