@@ -1,0 +1,11 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	@actuator {
+		path /actuator/*
+		not path /actuator/health
+	}
+	respond @actuator 404
+
+	reverse_proxy api:8080
+}

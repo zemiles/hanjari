@@ -10,3 +10,11 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	testImplementation testFixtures(project(':core'))
 }
+
+tasks.named('bootJar') {
+	archiveFileName = 'hanjari-api.jar'
+}
+
+tasks.named('jar') {
+	enabled = false
+}
