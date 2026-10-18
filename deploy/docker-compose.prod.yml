@@ -6,6 +6,23 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "5"
 
+x-api: &api
+  restart: unless-stopped
+  stop_grace_period: 30s
+  environment:
+    DB_HOST: postgres
+    POSTGRES_DB: ${POSTGRES_DB:-hanjari}
+    POSTGRES_USER: ${POSTGRES_USER:-hanjari}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env에 POSTGRES_PASSWORD를 설정하세요}
+    REDIS_HOST: redis
+    LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  logging: *default-logging
+
 services:
   caddy:
     image: caddy:2.11
@@ -16,31 +33,22 @@ services:
     environment:
       DOMAIN: ${DOMAIN:?.env에 DOMAIN을 설정하세요}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro
       - caddy-data:/data
       - caddy-config:/config
-    depends_on:
-      - api
     logging: *default-logging
 
-  api:
-    image: ghcr.io/zemiles/hanjari-api:${API_IMAGE_TAG:-latest}
-    restart: unless-stopped
-    environment:
-      DB_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB:-hanjari}
-      POSTGRES_USER: ${POSTGRES_USER:-hanjari}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env에 POSTGRES_PASSWORD를 설정하세요}
-      REDIS_HOST: redis
-      LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
+  api-blue:
+    <<: *api
+    image: ghcr.io/zemiles/hanjari-api:${API_BLUE_TAG:-latest}
     ports:
-      - "127.0.0.1:8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    logging: *default-logging
+      - "127.0.0.1:8081:8080"
+
+  api-green:
+    <<: *api
+    image: ghcr.io/zemiles/hanjari-api:${API_GREEN_TAG:-latest}
+    ports:
+      - "127.0.0.1:8082:8080"
 
   postgres:
     image: postgres:18
@@ -78,6 +86,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus

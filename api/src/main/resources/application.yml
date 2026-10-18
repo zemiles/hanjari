@@ -8,6 +8,11 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db,redis
   endpoints:
     web:
       exposure:

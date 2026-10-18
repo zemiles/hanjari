@@ -10,7 +10,7 @@ scrape_configs:
   - job_name: hanjari-api
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ["api:8080"]
+      - targets: ["api-blue:8080", "api-green:8080"]
 
   - job_name: node
     static_configs:

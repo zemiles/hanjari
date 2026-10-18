@@ -85,6 +85,7 @@ jobs:
     name: Deploy to production
     needs: image
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: production
       url: https://hanjari.duckdns.org/actuator/health
@@ -109,33 +110,13 @@ jobs:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
         run: |
           scp deploy/docker-compose.prod.yml "$TARGET:hanjari/compose.yml"
-          scp deploy/Caddyfile "$TARGET:hanjari/Caddyfile"
-          scp -r deploy/monitoring "$TARGET:hanjari/"
+          scp deploy/deploy.sh "$TARGET:hanjari/deploy.sh"
+          scp -r deploy/caddy deploy/monitoring "$TARGET:hanjari/"
 
-      - name: Deploy and health check
+      - name: Blue-Green deploy
         env:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
-        run: |
-          ssh "$TARGET" "bash -s -- $GITHUB_SHA" <<'EOF'
-          set -euo pipefail
-          TAG="$1"
-          cd ~/hanjari
-          sed -i '/^API_IMAGE_TAG=/d' .env
-          echo "API_IMAGE_TAG=$TAG" >> .env
-          docker compose pull api
-          docker compose up -d --remove-orphans
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8080/actuator/health | grep -q '"status":"UP"'; then
-              echo "배포 성공: $TAG"
-              docker image prune -f
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "헬스체크 실패"
-          docker compose logs --tail=100 api
-          exit 1
-          EOF
+        run: ssh "$TARGET" "bash hanjari/deploy.sh $GITHUB_SHA"
 
   notify:
     name: Notify Slack
