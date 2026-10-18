@@ -41,14 +41,17 @@ EOF
 }
 
 inflight() {      # inflight <주소>: Caddy가 그 주소로 보내서 아직 처리 중인 요청 수
-  docker compose exec -T caddy wget -qO- http://localhost:2019/reverse_proxy/upstreams \
-    | python3 -c 'import json, sys; print(sum(u["num_requests"] for u in json.load(sys.stdin) if u["address"] == sys.argv[1]))' "$1"
+  docker compose exec -T caddy wget -qO- http://127.0.0.1:2019/reverse_proxy/upstreams 2> /dev/null \
+    | python3 -c 'import json, sys; print(sum(u["num_requests"] for u in json.load(sys.stdin) if u["address"] == sys.argv[1]))' "$1" 2> /dev/null
 }
 
 drain() {         # drain <주소>: 처리 중 요청 0이 일정 시간 이어질 때까지 대기
-  local quiet=0 n
+  local quiet=0 failed=0 n
   for _ in $(seq 1 "$DRAIN_MAX_SECONDS"); do
-    n="$(inflight "$1" || echo 1)"
+    if ! n="$(inflight "$1")"; then
+      n=1
+      failed=$((failed + 1))
+    fi
     if [ "$n" -eq 0 ]; then quiet=$((quiet + 1)); else quiet=0; fi
     if [ "$quiet" -ge "$DRAIN_QUIET_SECONDS" ]; then
       echo "    $1 드레이닝 완료 (처리 중 요청 0이 ${DRAIN_QUIET_SECONDS}초 유지)"
@@ -56,7 +59,7 @@ drain() {         # drain <주소>: 처리 중 요청 0이 일정 시간 이어�
     fi
     sleep 1
   done
-  echo "    경고: $1 요청이 ${DRAIN_MAX_SECONDS}초 안에 비지 않음 → graceful shutdown에 맡김"
+  echo "    경고: $1 요청이 ${DRAIN_MAX_SECONDS}초 안에 비지 않음 (관리 API 조회 실패 ${failed}회) → graceful shutdown에 맡김"
 }
 
 server_errors() { # server_errors <포트>: 그 슬롯이 지금까지 낸 5xx 응답 수

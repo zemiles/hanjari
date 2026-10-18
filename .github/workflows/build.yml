@@ -78,8 +78,16 @@ jobs:
             -t "$IMAGE:$GITHUB_SHA" \
             -t "$IMAGE:latest" \
             api
-          docker push "$IMAGE:$GITHUB_SHA"
-          docker push "$IMAGE:latest"
+          push() {
+            for attempt in 1 2 3; do
+              docker push "$1" && return 0
+              echo "push 실패 ($attempt/3), $((attempt * 15))초 후 재시도"
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+          push "$IMAGE:$GITHUB_SHA"
+          push "$IMAGE:latest"
 
   deploy:
     name: Deploy to production
