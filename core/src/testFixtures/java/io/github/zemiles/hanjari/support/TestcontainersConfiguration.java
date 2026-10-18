@@ -8,10 +8,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
-    @Bean
-    @ServiceConnection
-    PostgreSQLContainer postgreSQLContainer() {
-        return new PostgreSQLContainer("postgres:18");
-    }
+	@Bean
+	@ServiceConnection
+	PostgreSQLContainer postgresContainer() {
+		return new PostgreSQLContainer("postgres:18");
+	}
 
 }

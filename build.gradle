@@ -1,41 +1,70 @@
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
 
 plugins {
-    id 'org.springframework.boot' version '4.1.1' apply false
-    id 'io.spring.dependency-management' version '1.1.7' apply false
+	id 'org.springframework.boot' version '4.1.1' apply false
+	id 'io.spring.dependency-management' version '1.1.7' apply false
+	id 'org.sonarqube' version '7.5.0.8588'
 }
 
 allprojects {
-    group = 'io.github.zemiles'
-    version = '0.0.1-SNAPSHOT'
+	group = 'io.github.zemiles'
+	version = '0.0.1-SNAPSHOT'
 }
 
 subprojects {
-    apply plugin: 'java'
-    apply plugin: 'io.spring.dependency-management'
+	apply plugin: 'java'
+	apply plugin: 'io.spring.dependency-management'
+	apply plugin: 'checkstyle'
+	apply plugin: 'jacoco'
 
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
-        }
-    }
+	checkstyle {
+		toolVersion = '14.3.0'
+		configFile = rootProject.file('config/naver-checkstyle-rules.xml')
+		configProperties = [
+			suppressionFile: rootProject.file('config/naver-checkstyle-suppressions.xml').absolutePath
+		]
+		maxWarnings = 0
+	}
 
-    repositories {
-        mavenCentral()
-    }
+	java {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(21)
+		}
+	}
 
-    dependencyManagement {
-        imports {
-            mavenBom SpringBootPlugin.BOM_COORDINATES
-        }
-    }
+	repositories {
+		mavenCentral()
+	}
 
-    dependencies {
-        testImplementation 'org.springframework.boot:spring-boot-starter-test'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    }
+	dependencyManagement {
+		imports {
+			mavenBom SpringBootPlugin.BOM_COORDINATES
+		}
+	}
 
-    tasks.named('test') {
-        useJUnitPlatform()
-    }
+	dependencies {
+		testImplementation 'org.springframework.boot:spring-boot-starter-test'
+		testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	}
+
+	tasks.named('test') {
+		useJUnitPlatform()
+		finalizedBy 'jacocoTestReport'
+	}
+
+	tasks.named('jacocoTestReport') {
+		dependsOn 'test'
+		reports {
+			xml.required = true
+			html.required = true
+		}
+	}
+}
+
+sonar {
+	properties {
+		property 'sonar.projectKey', 'zemiles_hanjari'
+		property 'sonar.organization', 'zemiles'
+		property 'sonar.host.url', 'https://sonarcloud.io'
+	}
 }
