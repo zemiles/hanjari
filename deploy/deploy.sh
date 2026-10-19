@@ -96,6 +96,13 @@ rollback() {
 
 # 0. 준비: 처음 전환할 때는 기존 단일 api 컨테이너를 가리킨다
 mkdir -p caddy
+install -d -m 755 node-exporter            # 백업 지표 파일 (node-exporter가 읽음)
+install -d -m 700 "$HOME/backups"          # 서버 보관 백업과 로그
+
+# 백업 cron 등록 (서버 시각은 UTC): 매일 04:17 KST 백업, 매주 일요일 05:17 KST 복구 리허설
+CRON_BACKUP="17 19 * * * bash $PWD/backup.sh >> $HOME/backups/backup.log 2>&1"
+CRON_RESTORE="17 20 * * 6 bash $PWD/restore-test.sh >> $HOME/backups/restore-test.log 2>&1"
+{ crontab -l 2> /dev/null | grep -v -e '/backup.sh' -e '/restore-test.sh' || true; echo "$CRON_BACKUP"; echo "$CRON_RESTORE"; } | crontab -
 [ -f caddy/upstream.caddy ] || echo "reverse_proxy $OLD_ADDR" > caddy/upstream.caddy
 sed -i '/^API_IMAGE_TAG=/d' .env
 

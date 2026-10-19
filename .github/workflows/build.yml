@@ -118,7 +118,7 @@ jobs:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
         run: |
           scp deploy/docker-compose.prod.yml "$TARGET:hanjari/compose.yml"
-          scp deploy/deploy.sh "$TARGET:hanjari/deploy.sh"
+          scp deploy/deploy.sh deploy/backup.sh deploy/restore-test.sh "$TARGET:hanjari/"
           scp -r deploy/caddy deploy/monitoring "$TARGET:hanjari/"
 
       - name: Blue-Green deploy

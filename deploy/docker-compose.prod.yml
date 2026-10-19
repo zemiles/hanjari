@@ -97,9 +97,11 @@ services:
     restart: unless-stopped
     command:
       - --path.rootfs=/host
+      - --collector.textfile.directory=/textfile
     pid: host
     volumes:
       - /:/host:ro,rslave
+      - ./node-exporter:/textfile:ro
     logging: *default-logging
 
   loki:
