@@ -1,0 +1,15 @@
+# 대시보드 프로비저닝: monitoring/grafana/dashboards/*.json을 읽는다
+# - 1860 Node Exporter Full, 4701 JVM (Micrometer), 19004 Spring Boot 3.x Statistics
+# - UI에서 저장할 수 없다. 고칠 때는 UI에서 수정 → JSON 내보내기 → 파일 교체 후 배포
+apiVersion: 1
+
+providers:
+  - name: hanjari
+    orgId: 1
+    type: file
+    folder: ''
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/dashboards

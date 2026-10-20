@@ -111,6 +111,18 @@ INFRA="$(docker compose config --services | grep -v '^api-')"
 docker compose up -d $INFRA
 docker compose exec -T prometheus wget -qO- --post-data='' http://localhost:9090/-/reload > /dev/null || true
 
+# Grafana 프로비저닝(알림·대시보드)이 바뀌었으면 재시작: 알림 규칙은 Grafana가 시작할 때만 읽는다
+grafana_up() { curl -fsS http://127.0.0.1:3000/api/health > /dev/null 2>&1; }
+GRAFANA_HASH="$(find monitoring/grafana -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+if [ "$(cat .grafana-hash 2> /dev/null)" != "$GRAFANA_HASH" ]; then
+  docker compose restart grafana > /dev/null
+  for _ in $(seq 1 30); do grafana_up && break; sleep 2; done
+  sleep 10   # 뜬 직후 프로비저닝 오류로 다시 죽는 경우까지 확인
+  grafana_up || { docker compose logs --tail=50 grafana; echo "!!! Grafana 기동 실패 (프로비저닝 파일 확인) → 트래픽 전환 전에 중단"; exit 1; }
+  echo "$GRAFANA_HASH" > .grafana-hash
+  echo "==> Grafana 프로비저닝 변경 반영"
+fi
+
 # 2. 쉬는 슬롯에 새 버전 기동 → 상태 확인 (이 단계까지 사용자 트래픽은 0%)
 VAR="API_${NEXT^^}_TAG"
 sed -i "/^${VAR}=/d" .env

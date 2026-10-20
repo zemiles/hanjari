@@ -1,0 +1,9 @@
+# 알림 정책 (파일 프로비저닝): 모든 알림을 Slack으로, 폴더·알림 이름별로 묶어서 보낸다
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: slack
+    group_by:
+      - grafana_folder
+      - alertname

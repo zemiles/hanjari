@@ -1,0 +1,245 @@
+# Grafana 알림 규칙 (파일 프로비저닝)
+# - Grafana는 시작할 때 이 파일을 읽는다. deploy.sh가 monitoring/grafana 아래 파일이 바뀌면 Grafana를 재시작한다.
+# - 이 파일로 만든 규칙은 UI에서 수정할 수 없다. 기준값을 바꿀 때는 이 파일을 고쳐서 배포한다.
+# - 목록에서 규칙을 빼도 Grafana에서 지워지지 않는다. 지울 때는 맨 아래 deleteRules에 uid를 적는다.
+# - 이 파일의 $는 환경 변수로 해석된다. 알림 문구 템플릿의 $values는 $$values로 적어야 그대로 남는다.
+#   (data.model 안의 쿼리는 해석하지 않으므로 그대로 적는다)
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: hanjari
+    folder: 한자리
+    interval: 1m
+    rules:
+      # ── 서비스 ──────────────────────────────────────────────
+      - uid: ag1lre34bwf7kd
+        title: API 다운
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'max(up{job="hanjari-api"})'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 1m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: 'hanjari-api 슬롯(blue/green)이 모두 1분 넘게 응답하지 않습니다. docker compose ps / logs api-blue, api-green 확인'
+        isPaused: false
+
+      - uid: ag1lre3858u80e
+        title: 5xx 에러 급증
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'sum(increase(http_server_requests_seconds_count{application="hanjari-api",outcome="SERVER_ERROR"}[5m]))'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [5] }
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '최근 5분간 5xx 응답이 {{ humanize $$values.A.Value }}건 발생했습니다. Loki에서 ERROR 로그 확인'
+        isPaused: false
+
+      # ── 서버 자원 ───────────────────────────────────────────
+      - uid: dg1lre3bw3cw0b
+        title: 디스크 80% 초과
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: '(1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [80] }
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '루트 디스크 사용률 {{ humanize $$values.A.Value }}%. 로그·이미지·DB 용량 확인'
+        isPaused: false
+
+      - uid: ag1lre3fpfrwga
+        title: 메모리 90% 초과
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: '(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [90] }
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '메모리 사용률 {{ humanize $$values.A.Value }}%. docker stats로 원인 컨테이너 확인'
+        isPaused: false
+
+      # ── 백업 (지표는 backup.sh, restore-test.sh가 node-exporter/*.prom에 기록) ──
+      - uid: dg1oh04rd7ri8b
+        title: 백업 누락
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'time() - max(hanjari_backup_last_success_timestamp_seconds)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [93600] }   # 26시간
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 1m
+        noDataState: Alerting   # 지표 파일이 사라져도 알림
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '마지막 백업 성공 후 {{ humanizeDuration $$values.A.Value }} 지났습니다(기준 26시간). VM에서 crontab -l, ~/backups/backup.log 확인'
+        isPaused: false
+
+      - uid: fg1oh04v6k6iod
+        title: 백업 실패
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'min(hanjari_backup_last_run_success)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 0s
+        noDataState: OK         # 지표가 없는 경우는 '백업 누락'이 잡는다
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '마지막 백업 실행이 실패했습니다. ~/backups/backup.log 확인 후 bash ~/hanjari/backup.sh 재실행'
+        isPaused: false
+
+      - uid: eg1oh04z2ehvka
+        title: 복구 리허설 누락
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'time() - max(hanjari_restore_test_last_success_timestamp_seconds)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [691200] }  # 8일
+              intervalMs: 1000
+              maxDataPoints: 43200
+        for: 1m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '마지막 복구 리허설 성공 후 {{ humanizeDuration $$values.A.Value }} 지났습니다(기준 8일). ~/backups/restore-test.log 확인'
+        isPaused: false
+
+# 규칙을 지울 때 사용 (예시)
+# deleteRules:
+#   - orgId: 1
+#     uid: <지울 규칙 uid>
