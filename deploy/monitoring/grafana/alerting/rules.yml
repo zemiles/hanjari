@@ -2,8 +2,8 @@
 # - Grafana는 시작할 때 이 파일을 읽는다. deploy.sh가 monitoring/grafana 아래 파일이 바뀌면 Grafana를 재시작한다.
 # - 이 파일로 만든 규칙은 UI에서 수정할 수 없다. 기준값을 바꿀 때는 이 파일을 고쳐서 배포한다.
 # - 목록에서 규칙을 빼도 Grafana에서 지워지지 않는다. 지울 때는 맨 아래 deleteRules에 uid를 적는다.
-# - 이 파일의 $는 환경 변수로 해석된다. 알림 문구 템플릿의 $values는 $$values로 적어야 그대로 남는다.
-#   (data.model 안의 쿼리는 해석하지 않으므로 그대로 적는다)
+# - 알림 문구(annotations)는 환경 변수로 치환되지 않는다. 템플릿 변수 $values는 그대로 적는다.
+#   (두 개짜리 $$values로 적으면 글자 그대로 남아서 템플릿이 깨진다. 2026-10-20 배포에서 확인)
 apiVersion: 1
 
 groups:
@@ -74,7 +74,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: '최근 5분간 5xx 응답이 {{ humanize $$values.A.Value }}건 발생했습니다. Loki에서 ERROR 로그 확인'
+          summary: '최근 5분간 5xx 응답이 {{ humanize $values.A.Value }}건 발생했습니다. Loki에서 ERROR 로그 확인'
         isPaused: false
 
       # ── 서버 자원 ───────────────────────────────────────────
@@ -107,7 +107,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: '루트 디스크 사용률 {{ humanize $$values.A.Value }}%. 로그·이미지·DB 용량 확인'
+          summary: '루트 디스크 사용률 {{ humanize $values.A.Value }}%. 로그·이미지·DB 용량 확인'
         isPaused: false
 
       - uid: ag1lre3fpfrwga
@@ -139,7 +139,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: '메모리 사용률 {{ humanize $$values.A.Value }}%. docker stats로 원인 컨테이너 확인'
+          summary: '메모리 사용률 {{ humanize $values.A.Value }}%. docker stats로 원인 컨테이너 확인'
         isPaused: false
 
       # ── 백업 (지표는 backup.sh, restore-test.sh가 node-exporter/*.prom에 기록) ──
@@ -172,7 +172,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: '마지막 백업 성공 후 {{ humanizeDuration $$values.A.Value }} 지났습니다(기준 26시간). VM에서 crontab -l, ~/backups/backup.log 확인'
+          summary: '마지막 백업 성공 후 {{ humanizeDuration $values.A.Value }} 지났습니다(기준 26시간). VM에서 crontab -l, ~/backups/backup.log 확인'
         isPaused: false
 
       - uid: fg1oh04v6k6iod
@@ -236,7 +236,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: '마지막 복구 리허설 성공 후 {{ humanizeDuration $$values.A.Value }} 지났습니다(기준 8일). ~/backups/restore-test.log 확인'
+          summary: '마지막 복구 리허설 성공 후 {{ humanizeDuration $values.A.Value }} 지났습니다(기준 8일). ~/backups/restore-test.log 확인'
         isPaused: false
 
 # 규칙을 지울 때 사용 (예시)
