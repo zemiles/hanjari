@@ -2,7 +2,7 @@ spring:
   application:
     name: hanjari-api
   config:
-    import: classpath:hanjari-core.yml
+    import: classpath:hanjari-domain.yml
   data:
     redis:
       host: ${REDIS_HOST:localhost}

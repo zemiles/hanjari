@@ -2,4 +2,4 @@ spring:
   application:
     name: hanjari-worker   # batch는 hanjari-batch
   config:
-    import: classpath:hanjari-core.yml
+    import: classpath:hanjari-domain.yml
