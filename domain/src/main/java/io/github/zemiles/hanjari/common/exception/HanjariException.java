@@ -10,7 +10,7 @@ import lombok.Getter;
 public class HanjariException extends RuntimeException {
 
 	private final ErrorType errorType;
-	private final Map<String, Object> parameter;
+	private final transient Map<String, Object> parameter;
 
 	public HanjariException(ErrorType errorType, Map<String, Object> parameter) {
 		this(errorType, parameter, null);
