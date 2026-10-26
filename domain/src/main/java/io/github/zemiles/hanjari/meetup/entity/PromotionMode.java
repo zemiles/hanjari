@@ -1,0 +1,4 @@
+package io.github.zemiles.hanjari.meetup.entity;
+
+public enum PromotionMode {
+}
