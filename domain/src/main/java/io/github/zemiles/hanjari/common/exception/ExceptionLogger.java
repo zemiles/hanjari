@@ -10,14 +10,14 @@ public class ExceptionLogger {
 	private ExceptionLogger() {
 	}
 
-	public static void log(HanjariException e) {
-		LoggingEventBuilder event = log.atLevel(e.getErrorType().getLogLevel())
+	public static void log(HanjariException exception) {
+		LoggingEventBuilder event = log.atLevel(exception.getErrorType().getLogLevel())
 			.setMessage("[{}] {}")
-			.addArgument(e.getErrorType().name())
-			.addArgument(e.getMessage())
-			.setCause(e.getCause());
+			.addArgument(exception.getErrorType().name())
+			.addArgument(exception.getMessage())
+			.setCause(exception.getCause());
 
-		e.getParameter().forEach(event::addKeyValue);
+		exception.getParameter().forEach(event::addKeyValue);
 		event.log();
 	}
 }

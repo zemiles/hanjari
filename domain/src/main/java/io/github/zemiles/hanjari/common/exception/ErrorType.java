@@ -25,8 +25,7 @@ public enum ErrorType {
 	// 4xxx 신청
 	APPLY_ALREADY_EXISTS(409, "4001", Level.INFO, "진행 중 신청 중복", "이미 신청한 회차입니다."),
 	APPLY_INVALID_TRANSITION(409, "4002", Level.WARN, "허용되지 않은 신청 상태 전이",
-		"현재 상태에서는 할 수 없는 요청입니다."),
-	;
+		"현재 상태에서는 할 수 없는 요청입니다.");
 
 	private final int status;
 	private final String code;
