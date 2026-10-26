@@ -1,4 +1,4 @@
-package io.github.zemiles.hanjari.exception;
+package io.github.zemiles.hanjari.common.exception;
 
 import org.slf4j.spi.LoggingEventBuilder;
 

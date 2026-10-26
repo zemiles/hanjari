@@ -1,4 +1,11 @@
 package io.github.zemiles.hanjari.club.repository;
 
-public interface ClubMembershipRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import io.github.zemiles.hanjari.club.entity.ClubMembership;
+
+@Repository
+public interface ClubMembershipRepository extends JpaRepository<ClubMembership, Long> {
+
 }

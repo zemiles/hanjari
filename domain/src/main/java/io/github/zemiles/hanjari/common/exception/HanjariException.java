@@ -1,4 +1,4 @@
-package io.github.zemiles.hanjari.exception;
+package io.github.zemiles.hanjari.common.exception;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
