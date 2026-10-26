@@ -10,7 +10,7 @@ Java 21, Spring Boot 4.1, PostgreSQL 18, Redis 8.2, Kafka 4.3, Gradle (멀티 �
 
 | 모듈     | 역할                  |
 |--------|---------------------|
-| core   | 도메인, 영속성, 공통 설정     |
+| domain | 도메인, 영속성, 공통 설정     |
 | api    | 신청·취소·승인·출석 API     |
 | worker | 아웃박스 릴레이, Kafka 컨슈머 |
 | batch  | 정합성 대사, 만료 처리       |
