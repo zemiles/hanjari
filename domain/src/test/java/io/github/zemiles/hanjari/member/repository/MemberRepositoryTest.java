@@ -33,7 +33,7 @@ public class MemberRepositoryTest {
 
 	@Test
 	@DisplayName("멤버 생성")
-	void 멤버생성() {
+	void createMember() {
 		Member member = new Member(1L, "이순신");
 		Member saved = memberRepository.save(member);
 
@@ -44,7 +44,7 @@ public class MemberRepositoryTest {
 
 	@Test
 	@DisplayName("멤버 조회")
-	void 멤버조회() {
+	void findMember() {
 		Member member = new Member(1L, "이순신");
 		memberRepository.save(member);
 
