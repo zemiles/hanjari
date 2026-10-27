@@ -44,10 +44,9 @@ public class Member extends BaseTimeEntity {
 	@Column
 	private Instant withdrawnAt;
 
-	private Member(Long kakaoId, String nickname) {
+	public Member(Long kakaoId, String nickname) {
 		this.kakaoId = kakaoId;
 		this.nickname = nickname;
 		this.status = MemberStatus.ACTIVE;
 	}
-
 }
