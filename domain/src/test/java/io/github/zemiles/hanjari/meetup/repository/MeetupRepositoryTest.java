@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.github.zemiles.hanjari.club.entity.Club;
 import io.github.zemiles.hanjari.club.entity.PenaltyScope;
@@ -43,14 +45,18 @@ public class MeetupRepositoryTest {
 
 	private final EntityManager entityManager;
 
+	private final JdbcTemplate jdbcTemplate;
+
 	@Autowired
 	public MeetupRepositoryTest(
 		MeetupRepository meetupRepository,
 		ClubRepository clubRepository,
-		EntityManager entityManager) {
+		EntityManager entityManager,
+		JdbcTemplate jdbcTemplate) {
 		this.meetupRepository = meetupRepository;
 		this.clubRepository = clubRepository;
 		this.entityManager = entityManager;
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	@Test
@@ -97,6 +103,40 @@ public class MeetupRepositoryTest {
 		assertThat(result.getConfirmedCount()).isZero();
 		assertThat(result.getWaitingCount()).isZero();
 		assertThat(result.getNextWaitingSeq()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("확정 인원이 정원을 넘으면 거부된다")
+	void rejectConfirmedCountOverCapacity() {
+		Club club = saveClub();
+		Meetup meetup = meetupRepository.saveAndFlush(newMeetup(club.getId())); // 정원 10
+
+		Long meetupId = meetup.getId();
+
+		assertThatThrownBy(() -> updateConfirmedCount(meetupId, 11))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("ck_meetup_confirmed_count");
+	}
+
+	@Test
+	@DisplayName("확정 인원이 정원과 같으면 허용된다")
+	void allowConfirmedCountEqualToCapacity() {
+		Club club = saveClub();
+		Meetup meetup = meetupRepository.saveAndFlush(newMeetup(club.getId())); // 정원 10
+
+		updateConfirmedCount(meetup.getId(), 10);
+		entityManager.clear(); // 영속성 컨텍스트에는 아직 0이 들어 있어서 비우고 다시 읽는다
+
+		Meetup result = meetupRepository.findById(meetup.getId()).orElseThrow(
+			() -> new HanjariException(ErrorType.MEETUP_NOT_FOUND, Map.of("meetupId", meetup.getId()))
+		);
+
+		assertThat(result.getConfirmedCount()).isEqualTo(10);
+	}
+
+	// 카운터는 updatable = false라 엔티티로는 못 바꾼다. 실제 서비스처럼 UPDATE 쿼리로 바꾼다
+	private void updateConfirmedCount(Long meetupId, int confirmedCount) {
+		jdbcTemplate.update("UPDATE meetup SET confirmed_count = ? WHERE id = ?", confirmedCount, meetupId);
 	}
 
 	private Club saveClub() {
