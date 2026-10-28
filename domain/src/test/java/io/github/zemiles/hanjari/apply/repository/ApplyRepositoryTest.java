@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import io.github.zemiles.hanjari.apply.entity.Apply;
 import io.github.zemiles.hanjari.apply.entity.ApplyStatus;
@@ -116,6 +117,37 @@ public class ApplyRepositoryTest {
 		assertThat(result.getAppliedAt()).isEqualTo(NOW);
 		assertThat(result.getConfirmedAt()).isNull();
 		assertThat(result.getEndedAt()).isNull();
+	}
+
+	@Test
+	@DisplayName("같은 회차에 진행 중인 신청이 있으면 같은 회원의 두 번째 신청은 거부된다")
+	void rejectSecondActiveApply() {
+		Meetup meetup = saveMeetup();
+		Member member = saveMember();
+		applyRepository.saveAndFlush(Apply.createConfirmed(meetup.getId(), member.getId(), IDEMPOTENCY_KEY, NOW));
+
+		// 멱등키는 다르게 넣어서 uk_apply_active만 걸리게 한다
+		Apply second = Apply.createWaiting(meetup.getId(), member.getId(), "apply-key-2", 1, NOW);
+
+		assertThatThrownBy(() -> applyRepository.saveAndFlush(second))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("uk_apply_active");
+	}
+
+	@Test
+	@DisplayName("같은 멱등키로 신청하면 두 번째 신청은 거부된다")
+	void rejectDuplicateIdempotencyKey() {
+		Meetup meetup = saveMeetup();
+		Member member = saveMember();
+		Member otherMember = memberRepository.save(new Member(2L, "다른 신청자"));
+		applyRepository.saveAndFlush(Apply.createConfirmed(meetup.getId(), member.getId(), IDEMPOTENCY_KEY, NOW));
+
+		// 회원을 다르게 넣어서 uk_apply_idempotency_key만 걸리게 한다
+		Apply second = Apply.createConfirmed(meetup.getId(), otherMember.getId(), IDEMPOTENCY_KEY, NOW);
+
+		assertThatThrownBy(() -> applyRepository.saveAndFlush(second))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("uk_apply_idempotency_key");
 	}
 
 	private Apply getApply(Long applyId) {
