@@ -52,7 +52,7 @@ public class Club extends BaseTimeEntity {
 	private Instant closesAt;
 
 	@Builder
-	private Club(String name, String description, Visibility visibility, PenaltyScope penaltyScope,
+	public Club(String name, String description, Visibility visibility, PenaltyScope penaltyScope,
 		SuccessionMode successionMode) {
 		this.name = name;
 		this.description = description;

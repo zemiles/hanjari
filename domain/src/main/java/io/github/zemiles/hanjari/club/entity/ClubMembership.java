@@ -45,13 +45,24 @@ public class ClubMembership extends BaseTimeEntity {
 	@Column
 	private Instant joinedAt;
 
-	private ClubMembership(Club club, Long memberId, MembershipRole role, MembershipStatus status,
-		Instant joinedAt) {
+	private ClubMembership(Club club, Long memberId) {
 		this.club = club;
 		this.memberId = memberId;
-		this.role = role;
-		this.status = status;
-		this.joinedAt = joinedAt;
+	}
+
+	public static ClubMembership owner(Club club, Long memberId, Instant now) {
+		ClubMembership clubMembership = new ClubMembership(club, memberId);
+		clubMembership.role = MembershipRole.OWNER;
+		clubMembership.status = MembershipStatus.ACTIVE;
+		clubMembership.joinedAt = now;
+		return clubMembership;
+	}
+
+	public static ClubMembership request(Club club, Long memberId) {
+		ClubMembership clubMembership = new ClubMembership(club, memberId);
+		clubMembership.role = MembershipRole.MEMBER;
+		clubMembership.status = MembershipStatus.PENDING;
+		return clubMembership;
 	}
 
 }

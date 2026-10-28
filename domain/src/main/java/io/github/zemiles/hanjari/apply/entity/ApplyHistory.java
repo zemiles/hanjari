@@ -54,6 +54,15 @@ public class ApplyHistory extends BaseTimeEntity {
 		this.actorMemberId = actorMemberId;
 	}
 
+	public static ApplyHistory bySelf(Apply apply, ApplyStatus fromStatus, ApplyStatus toStatus) {
+		return new ApplyHistory(apply, fromStatus, toStatus, ActorType.SELF, apply.getMemberId());
+	}
 
+	public static ApplyHistory byStaff(Apply apply, ApplyStatus fromStatus, ApplyStatus toStatus, Long staffMemberId) {
+		return new ApplyHistory(apply, fromStatus, toStatus, ActorType.STAFF, staffMemberId);
+	}
 
+	public static ApplyHistory bySystem(Apply apply, ApplyStatus fromStatus, ApplyStatus toStatus) {
+		return new ApplyHistory(apply, fromStatus, toStatus, ActorType.SYSTEM, null);
+	}
 }

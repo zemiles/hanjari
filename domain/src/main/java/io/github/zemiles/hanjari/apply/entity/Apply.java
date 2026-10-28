@@ -56,4 +56,20 @@ public class Apply extends BaseTimeEntity {
 		this.idempotencyKey = idempotencyKey;
 		this.appliedAt = appliedAt;
 	}
+
+	public static Apply createConfirmed(Long meetupId, Long memberId, String idempotencyKey, Instant now) {
+		Apply apply = new Apply(meetupId, memberId, idempotencyKey, now);
+		apply.status = ApplyStatus.CONFIRMED;
+		apply.confirmedAt = now;
+		return apply;
+	}
+
+	public static Apply createWaiting(Long meetupId, Long memberId, String idempotencyKey, int waitingSeq,
+		Instant now) {
+		Apply apply = new Apply(meetupId, memberId, idempotencyKey, now);
+		apply.status = ApplyStatus.WAITING;
+		apply.waitingSeq = waitingSeq;
+		return apply;
+	}
+
 }
