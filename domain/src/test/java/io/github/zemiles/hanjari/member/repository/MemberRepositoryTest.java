@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.util.Map;
 
-import org.aspectj.lang.annotation.Before;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,17 +16,21 @@ import io.github.zemiles.hanjari.common.exception.ErrorType;
 import io.github.zemiles.hanjari.common.exception.HanjariException;
 import io.github.zemiles.hanjari.member.entity.Member;
 import io.github.zemiles.hanjari.support.TestcontainersConfiguration;
+import jakarta.persistence.EntityManager;
 
 @DataJpaTest
-@DisplayName("member 관련 테스트")
+@DisplayName("MemberRepository 관련 테스트")
 @Import({TestcontainersConfiguration.class, JpaConfig.class, ClockConfig.class})
 public class MemberRepositoryTest {
 
 	private final MemberRepository memberRepository;
 
+	private final EntityManager entityManager;
+
 	@Autowired
-	public MemberRepositoryTest(MemberRepository memberRepository) {
+	public MemberRepositoryTest(MemberRepository memberRepository, EntityManager entityManager) {
 		this.memberRepository = memberRepository;
+		this.entityManager = entityManager;
 	}
 
 	@Test
@@ -36,6 +38,9 @@ public class MemberRepositoryTest {
 	void createMember() {
 		Member member = new Member(1L, "이순신");
 		Member saved = memberRepository.save(member);
+
+		entityManager.flush();
+		entityManager.clear();
 
 		assertThat(saved.getId()).isNotNull(); // id가 null 인지
 		assertThat(saved.getCreatedAt()).isNotNull(); // 생성 일시가 null 인지
@@ -48,8 +53,11 @@ public class MemberRepositoryTest {
 		Member member = new Member(1L, "이순신");
 		memberRepository.save(member);
 
+		entityManager.flush();
+		entityManager.clear();
+
 		Member result = memberRepository.findById(member.getId()).orElseThrow(
-			() -> new HanjariException(ErrorType.MEMBER_NOT_FOUND, Map.of("MemberId", member.getId()))
+			() -> new HanjariException(ErrorType.MEMBER_NOT_FOUND, Map.of("memberId", member.getId()))
 		);
 
 		assertThat(result.getId()).isNotNull();

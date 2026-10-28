@@ -45,14 +45,35 @@ public class Attendance extends BaseTimeEntity {
 	@Column
 	private Integer distanceMeters;
 
-	private Attendance(Long applyId, AttendanceStatus status, Instant checkedAt, CheckMethod checkMethod,
-		Long processedBy, Integer distanceMeters) {
+	private Attendance(Long applyId, AttendanceStatus status) {
 		this.applyId = applyId;
 		this.status = status;
-		this.checkedAt = checkedAt;
-		this.checkMethod = checkMethod;
-		this.processedBy = processedBy;
-		this.distanceMeters = distanceMeters;
+	}
+
+	public static Attendance selfCheck(Long applyId, Instant startsAt, Instant checkedAt, Integer distanceMeters) {
+		Attendance attendance = new Attendance(applyId, statusOf(startsAt, checkedAt));
+		attendance.checkedAt = checkedAt;
+		attendance.checkMethod = CheckMethod.SELF;
+		attendance.distanceMeters = distanceMeters;
+		return attendance;
+	}
+
+	public static Attendance staffCheck(Long applyId, Long processedBy, Instant startsAt, Instant checkedAt) {
+		Attendance attendance = new Attendance(applyId, statusOf(startsAt, checkedAt));
+		attendance.checkedAt = checkedAt;
+		attendance.checkMethod = CheckMethod.STAFF;
+		attendance.processedBy = processedBy;
+		return attendance;
+	}
+
+	public static Attendance noShow(Long applyId, Long processedBy) {
+		Attendance attendance = new Attendance(applyId, AttendanceStatus.NO_SHOW);
+		attendance.processedBy = processedBy;
+		return attendance;
+	}
+
+	private static AttendanceStatus statusOf(Instant startAt, Instant checkedAt) {
+		return checkedAt.isAfter(startAt) ? AttendanceStatus.LATE : AttendanceStatus.ATTENDED;
 	}
 
 }
