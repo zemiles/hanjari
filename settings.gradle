@@ -1,2 +1,2 @@
 rootProject.name = 'hanjari'
-include 'core', 'api', 'worker', 'batch'
+include 'domain', 'api', 'worker', 'batch'
