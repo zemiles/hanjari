@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import io.github.zemiles.hanjari.club.entity.Club;
 import io.github.zemiles.hanjari.club.entity.ClubMembership;
@@ -103,5 +104,35 @@ public class ClubMembershipRepositoryTest {
 		assertThat(result.getRole()).isEqualTo(MembershipRole.OWNER);
 		assertThat(result.getStatus()).isEqualTo(MembershipStatus.ACTIVE);
 		assertThat(result.getJoinedAt()).isEqualTo(NOW); // DB에 다녀와도 넘긴 시각 그대로인지
+	}
+
+	@Test
+	@DisplayName("한 클럽에 클럽장이 이미 있으면 두 번째 클럽장은 거부된다")
+	void rejectSecondOwner() {
+		Member owner = memberRepository.save(new Member(1L, "클럽장"));
+		Member otherMember = memberRepository.save(new Member(2L, "다른 회원"));
+		clubRepository.save(club);
+		clubMembershipRepository.saveAndFlush(ClubMembership.owner(club, owner.getId(), NOW));
+
+		// 다른 회원으로 넣어서 uk_club_membership_owner만 걸리게 한다
+		ClubMembership secondOwner = ClubMembership.owner(club, otherMember.getId(), NOW);
+
+		assertThatThrownBy(() -> clubMembershipRepository.saveAndFlush(secondOwner))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("uk_club_membership_owner");
+	}
+
+	@Test
+	@DisplayName("클럽장이 있는 클럽에도 클럽장이 아닌 소속은 저장된다")
+	void allowMemberInClubWithOwner() {
+		Member owner = memberRepository.save(new Member(1L, "클럽장"));
+		Member otherMember = memberRepository.save(new Member(2L, "다른 회원"));
+		clubRepository.save(club);
+		clubMembershipRepository.saveAndFlush(ClubMembership.owner(club, owner.getId(), NOW));
+
+		// uk_club_membership_owner는 클럽장 줄에만 걸리는 부분 유니크 인덱스다
+		ClubMembership saved = clubMembershipRepository.saveAndFlush(ClubMembership.request(club, otherMember.getId()));
+
+		assertThat(saved.getId()).isNotNull();
 	}
 }

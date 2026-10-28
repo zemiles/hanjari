@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import io.github.zemiles.hanjari.apply.entity.Apply;
 import io.github.zemiles.hanjari.apply.repository.ApplyRepository;
@@ -137,6 +138,21 @@ public class AttendanceRepositoryTest {
 		assertThat(result.getCheckMethod()).isNull();
 		assertThat(result.getProcessedBy()).isEqualTo(staff.getId()); // 노쇼를 확정한 사람
 		assertThat(result.getDistanceMeters()).isNull();
+	}
+
+	@Test
+	@DisplayName("한 신청에 출석 기록이 이미 있으면 두 번째 기록은 거부된다")
+	void rejectSecondAttendanceForSameApply() {
+		Member staff = memberRepository.save(new Member(2L, "운영진"));
+		Apply apply = saveApply();
+		attendanceRepository.saveAndFlush(Attendance.selfCheck(apply.getId(), STARTS_AT, BEFORE_START, 30));
+
+		// 체크 방식이 달라도 같은 신청이면 거부된다
+		Attendance second = Attendance.noShow(apply.getId(), staff.getId());
+
+		assertThatThrownBy(() -> attendanceRepository.saveAndFlush(second))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("uk_attendance_apply");
 	}
 
 	private Apply saveApply() {

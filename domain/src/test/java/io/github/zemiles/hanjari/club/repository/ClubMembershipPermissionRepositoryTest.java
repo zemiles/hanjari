@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import io.github.zemiles.hanjari.club.entity.Club;
 import io.github.zemiles.hanjari.club.entity.ClubMembership;
@@ -87,6 +88,20 @@ public class ClubMembershipPermissionRepositoryTest {
 		assertThat(result)
 			.extracting(row -> row.getClubMembership().getId())
 			.containsOnly(clubMembership.getId()); // 모두 같은 소속에 붙었는지
+	}
+
+	@Test
+	@DisplayName("같은 소속에 같은 권한을 두 번 저장하면 거부된다")
+	void rejectDuplicatePermission() {
+		ClubMembership clubMembership = saveClubMembership();
+		clubMembershipPermissionRepository.saveAndFlush(
+			new ClubMembershipPermission(clubMembership, Permission.MEETUP_MANAGE));
+
+		ClubMembershipPermission duplicate = new ClubMembershipPermission(clubMembership, Permission.MEETUP_MANAGE);
+
+		assertThatThrownBy(() -> clubMembershipPermissionRepository.saveAndFlush(duplicate))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("uk_club_membership_permission");
 	}
 
 	// 운영진으로 바꾸는 메서드가 아직 없어서 소속은 클럽장으로 만든다
