@@ -7,6 +7,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 3s
 management:
   endpoint:
     health:
@@ -23,3 +27,7 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+kakao:
+  client-id: ${KAKAO_CLIENT_ID:}
+  client-secret: ${KAKAO_CLIENT_SECRET:}
+  redirect-uri: ${KAKAO_REDIRECT_URI:}
