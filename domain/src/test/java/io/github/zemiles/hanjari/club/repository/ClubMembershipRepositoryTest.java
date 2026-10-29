@@ -110,7 +110,7 @@ public class ClubMembershipRepositoryTest {
 	@DisplayName("한 클럽에 클럽장이 이미 있으면 두 번째 클럽장은 거부된다")
 	void rejectSecondOwner() {
 		Member owner = memberRepository.save(new Member(1L, "클럽장"));
-		Member otherMember = memberRepository.save(new Member(2L, "다른 회원"));
+		Member otherMember = memberRepository.save(new Member(2L, "다른회원"));
 		clubRepository.save(club);
 		clubMembershipRepository.saveAndFlush(ClubMembership.owner(club, owner.getId(), NOW));
 
@@ -126,7 +126,7 @@ public class ClubMembershipRepositoryTest {
 	@DisplayName("클럽장이 있는 클럽에도 클럽장이 아닌 소속은 저장된다")
 	void allowMemberInClubWithOwner() {
 		Member owner = memberRepository.save(new Member(1L, "클럽장"));
-		Member otherMember = memberRepository.save(new Member(2L, "다른 회원"));
+		Member otherMember = memberRepository.save(new Member(2L, "다른회원"));
 		clubRepository.save(club);
 		clubMembershipRepository.saveAndFlush(ClubMembership.owner(club, owner.getId(), NOW));
 
