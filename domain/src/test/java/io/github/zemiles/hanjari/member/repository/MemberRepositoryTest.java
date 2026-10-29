@@ -6,9 +6,12 @@ import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import io.github.zemiles.hanjari.common.config.ClockConfig;
 import io.github.zemiles.hanjari.common.config.JpaConfig;
@@ -62,6 +65,48 @@ public class MemberRepositoryTest {
 
 		assertThat(result.getId()).isNotNull();
 		assertThat(result.getId()).isEqualTo(member.getId());
+	}
+
+	@Test
+	@DisplayName("활동 회원끼리 같은 닉네임이면 uk_member_nickname_active로 막힌다")
+	void duplicateNicknameAmongActiveMembers() {
+		memberRepository.saveAndFlush(new Member(1L, "이순신"));
+
+		assertThatThrownBy(() -> memberRepository.saveAndFlush(new Member(2L, "이순신")))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("uk_member_nickname_active");
+	}
+
+	@Test
+	@DisplayName("탈퇴 회원이 쓰던 닉네임은 다른 회원이 쓸 수 있다")
+	void nicknameOfWithdrawnMemberIsReusable() {
+		Member withdrawn = memberRepository.saveAndFlush(new Member(1L, "이순신"));
+		// Member에 아직 탈퇴 메서드가 없어서 SQL로 탈퇴 상태로 바꾼다
+		entityManager.createNativeQuery(
+				"UPDATE member SET status = 'WITHDRAWN', withdrawn_at = now() WHERE id = :id")
+			.setParameter("id", withdrawn.getId())
+			.executeUpdate();
+
+		assertThatCode(() -> memberRepository.saveAndFlush(new Member(2L, "이순신")))
+			.doesNotThrowAnyException();
+	}
+
+	@Test
+	@DisplayName("영문 대소문자만 다른 닉네임은 다른 닉네임으로 본다")
+	void nicknameIsCaseSensitive() {
+		memberRepository.saveAndFlush(new Member(1L, "Abc"));
+
+		assertThatCode(() -> memberRepository.saveAndFlush(new Member(2L, "abc")))
+			.doesNotThrowAnyException();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"이 순신", "이\t순신"})
+	@DisplayName("닉네임에 공백이 있으면 ck_member_nickname_no_space로 막힌다")
+	void nicknameWithSpaceIsRejected(String nickname) {
+		assertThatThrownBy(() -> memberRepository.saveAndFlush(new Member(1L, nickname)))
+			.isInstanceOf(DataIntegrityViolationException.class)
+			.hasMessageContaining("ck_member_nickname_no_space");
 	}
 
 }
