@@ -106,7 +106,7 @@ public class ClubMembershipPermissionRepositoryTest {
 
 	// 운영진으로 바꾸는 메서드가 아직 없어서 소속은 클럽장으로 만든다
 	private ClubMembership saveClubMembership() {
-		Member member = memberRepository.save(new Member(1L, "테스트1"));
+		Member member = memberRepository.save(Member.join(1L, "테스트1"));
 		Club club = clubRepository.save(
 			new Club("클럽테스트", "테스트 클럽입니다.", Visibility.PUBLIC_LINK, PenaltyScope.CLUB, SuccessionMode.AUTO));
 		return clubMembershipRepository.save(ClubMembership.owner(club, member.getId(), NOW));

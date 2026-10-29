@@ -39,7 +39,7 @@ public class MemberRepositoryTest {
 	@Test
 	@DisplayName("멤버 생성")
 	void createMember() {
-		Member member = new Member(1L, "이순신");
+		Member member = Member.join(1L, "이순신");
 		Member saved = memberRepository.save(member);
 
 		entityManager.flush();
@@ -53,7 +53,7 @@ public class MemberRepositoryTest {
 	@Test
 	@DisplayName("멤버 조회")
 	void findMember() {
-		Member member = new Member(1L, "이순신");
+		Member member = Member.join(1L, "이순신");
 		memberRepository.save(member);
 
 		entityManager.flush();
@@ -70,9 +70,9 @@ public class MemberRepositoryTest {
 	@Test
 	@DisplayName("활동 회원끼리 같은 닉네임이면 uk_member_nickname_active로 막힌다")
 	void duplicateNicknameAmongActiveMembers() {
-		memberRepository.saveAndFlush(new Member(1L, "이순신"));
+		memberRepository.saveAndFlush(Member.join(1L, "이순신"));
 
-		assertThatThrownBy(() -> memberRepository.saveAndFlush(new Member(2L, "이순신")))
+		assertThatThrownBy(() -> memberRepository.saveAndFlush(Member.join(2L, "이순신")))
 			.isInstanceOf(DataIntegrityViolationException.class)
 			.hasMessageContaining("uk_member_nickname_active");
 	}
@@ -80,23 +80,23 @@ public class MemberRepositoryTest {
 	@Test
 	@DisplayName("탈퇴 회원이 쓰던 닉네임은 다른 회원이 쓸 수 있다")
 	void nicknameOfWithdrawnMemberIsReusable() {
-		Member withdrawn = memberRepository.saveAndFlush(new Member(1L, "이순신"));
+		Member withdrawn = memberRepository.saveAndFlush(Member.join(1L, "이순신"));
 		// Member에 아직 탈퇴 메서드가 없어서 SQL로 탈퇴 상태로 바꾼다
 		entityManager.createNativeQuery(
 				"UPDATE member SET status = 'WITHDRAWN', withdrawn_at = now() WHERE id = :id")
 			.setParameter("id", withdrawn.getId())
 			.executeUpdate();
 
-		assertThatCode(() -> memberRepository.saveAndFlush(new Member(2L, "이순신")))
+		assertThatCode(() -> memberRepository.saveAndFlush(Member.join(2L, "이순신")))
 			.doesNotThrowAnyException();
 	}
 
 	@Test
 	@DisplayName("영문 대소문자만 다른 닉네임은 다른 닉네임으로 본다")
 	void nicknameIsCaseSensitive() {
-		memberRepository.saveAndFlush(new Member(1L, "Abc"));
+		memberRepository.saveAndFlush(Member.join(1L, "Abc"));
 
-		assertThatCode(() -> memberRepository.saveAndFlush(new Member(2L, "abc")))
+		assertThatCode(() -> memberRepository.saveAndFlush(Member.join(2L, "abc")))
 			.doesNotThrowAnyException();
 	}
 
@@ -104,7 +104,7 @@ public class MemberRepositoryTest {
 	@ValueSource(strings = {"이 순신", "이\t순신"})
 	@DisplayName("닉네임에 공백이 있으면 ck_member_nickname_no_space로 막힌다")
 	void nicknameWithSpaceIsRejected(String nickname) {
-		assertThatThrownBy(() -> memberRepository.saveAndFlush(new Member(1L, nickname)))
+		assertThatThrownBy(() -> memberRepository.saveAndFlush(Member.join(1L, nickname)))
 			.isInstanceOf(DataIntegrityViolationException.class)
 			.hasMessageContaining("ck_member_nickname_no_space");
 	}
