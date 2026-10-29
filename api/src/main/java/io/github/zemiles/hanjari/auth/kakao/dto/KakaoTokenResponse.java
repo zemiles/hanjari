@@ -1,9 +1,9 @@
 package io.github.zemiles.hanjari.auth.kakao.dto;
 
+import org.jspecify.annotations.NonNull;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import org.jspecify.annotations.NonNull;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record KakaoTokenResponse(
