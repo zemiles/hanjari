@@ -88,7 +88,11 @@ public class KakaoClientTest {
 			.andRespond(withBadRequest()
 				.contentType(MediaType.APPLICATION_JSON)
 				.body("""
-					{"error": "invalid_grant", "error_description": "authorization code not found for code=used-code", "error_code": "KOE320"}
+					{
+						"error": "invalid_grant",
+						"error_description": "authorization code not found for code=used-code",
+						"error_code": "KOE320"
+					}
 					"""));
 
 		assertErrorType(() -> kakaoClient.getUser("used-code"), ErrorType.KAKAO_INVALID_CODE);
