@@ -139,7 +139,7 @@ public class ApplyRepositoryTest {
 	void rejectDuplicateIdempotencyKey() {
 		Meetup meetup = saveMeetup();
 		Member member = saveMember();
-		Member otherMember = memberRepository.save(new Member(2L, "다른신청자"));
+		Member otherMember = memberRepository.save(Member.join(2L, "다른신청자"));
 		applyRepository.saveAndFlush(Apply.createConfirmed(meetup.getId(), member.getId(), IDEMPOTENCY_KEY, NOW));
 
 		// 회원을 다르게 넣어서 uk_apply_idempotency_key만 걸리게 한다
@@ -157,7 +157,7 @@ public class ApplyRepositoryTest {
 	}
 
 	private Member saveMember() {
-		return memberRepository.save(new Member(1L, "신청자"));
+		return memberRepository.save(Member.join(1L, "신청자"));
 	}
 
 	private Meetup saveMeetup() {

@@ -97,7 +97,7 @@ public class ApplyHistoryRepositoryTest {
 	@Test
 	@DisplayName("권한 있는 사람이 바꾼 이력 조회")
 	void findApplyHistoryByStaff() {
-		Member staff = memberRepository.save(new Member(2L, "운영진"));
+		Member staff = memberRepository.save(Member.join(2L, "운영진"));
 		Apply apply = saveApply();
 		// 수동 승격: 대기 → 확정
 		ApplyHistory history = applyHistoryRepository.save(
@@ -130,7 +130,7 @@ public class ApplyHistoryRepositoryTest {
 	}
 
 	private Apply saveApply() {
-		Member member = memberRepository.save(new Member(1L, "신청자"));
+		Member member = memberRepository.save(Member.join(1L, "신청자"));
 		Club club = clubRepository.save(new Club("클럽테스트", "테스트 클럽입니다.", Visibility.PUBLIC_LINK,
 			PenaltyScope.MEETUP, SuccessionMode.AUTO));
 		Meetup meetup = meetupRepository.save(Meetup.builder()

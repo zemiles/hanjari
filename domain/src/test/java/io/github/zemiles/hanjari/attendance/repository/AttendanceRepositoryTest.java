@@ -106,7 +106,7 @@ public class AttendanceRepositoryTest {
 	@Test
 	@DisplayName("대신 처리한 지각 조회")
 	void findStaffCheckAttendance() {
-		Member staff = memberRepository.save(new Member(2L, "운영진"));
+		Member staff = memberRepository.save(Member.join(2L, "운영진"));
 		Apply apply = saveApply();
 		Attendance attendance = attendanceRepository.save(
 			Attendance.staffCheck(apply.getId(), staff.getId(), STARTS_AT, AFTER_START));
@@ -125,7 +125,7 @@ public class AttendanceRepositoryTest {
 	@Test
 	@DisplayName("노쇼 조회")
 	void findNoShowAttendance() {
-		Member staff = memberRepository.save(new Member(2L, "운영진"));
+		Member staff = memberRepository.save(Member.join(2L, "운영진"));
 		Apply apply = saveApply();
 		Attendance attendance = attendanceRepository.save(Attendance.noShow(apply.getId(), staff.getId()));
 		entityManager.flush();
@@ -143,7 +143,7 @@ public class AttendanceRepositoryTest {
 	@Test
 	@DisplayName("한 신청에 출석 기록이 이미 있으면 두 번째 기록은 거부된다")
 	void rejectSecondAttendanceForSameApply() {
-		Member staff = memberRepository.save(new Member(2L, "운영진"));
+		Member staff = memberRepository.save(Member.join(2L, "운영진"));
 		Apply apply = saveApply();
 		attendanceRepository.saveAndFlush(Attendance.selfCheck(apply.getId(), STARTS_AT, BEFORE_START, 30));
 
@@ -156,7 +156,7 @@ public class AttendanceRepositoryTest {
 	}
 
 	private Apply saveApply() {
-		Member member = memberRepository.save(new Member(1L, "신청자"));
+		Member member = memberRepository.save(Member.join(1L, "신청자"));
 		Club club = clubRepository.save(new Club("클럽테스트", "테스트 클럽입니다.", Visibility.PUBLIC_LINK,
 			PenaltyScope.MEETUP, SuccessionMode.AUTO));
 		Meetup meetup = meetupRepository.save(Meetup.builder()

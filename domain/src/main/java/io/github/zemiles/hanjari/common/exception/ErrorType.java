@@ -17,6 +17,8 @@ public enum ErrorType {
 	// 1001 ~ 회원
 	MEMBER_NOT_FOUND(404, "1001", Level.INFO, "회원 조회 실패", "회원 정보를 찾을 수 없습니다."),
 	MEMBER_ALREADY_WITHDRAWN(409, "1002", Level.INFO, "이미 탈퇴한 회원", "이미 탈퇴한 회원입니다."),
+	MEMBER_NICKNAME_DUPLICATED(409, "1003", Level.INFO, "활동 회원과 닉네임 중복", "이미 사용 중인 닉네임입니다."),
+	MEMBER_ALREADY_REGISTERED(409, "1004", Level.INFO, "이미 활동 중인 회원의 가입 요청", "이미 가입된 계정입니다. 다시 로그인해 주세요."),
 
 	// 2001 ~ 클럽
 	CLUB_NOT_FOUND(404, "2001", Level.INFO, "클럽 조회 실패", "클럽을 찾을 수 없습니다."),

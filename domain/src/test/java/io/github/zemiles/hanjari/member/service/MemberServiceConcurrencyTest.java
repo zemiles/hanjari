@@ -1,0 +1,111 @@
+package io.github.zemiles.hanjari.member.service;
+
+import static org.assertj.core.api.Assertions.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.RepeatedTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import io.github.zemiles.hanjari.common.config.ClockConfig;
+import io.github.zemiles.hanjari.common.config.JpaConfig;
+import io.github.zemiles.hanjari.common.exception.ErrorType;
+import io.github.zemiles.hanjari.common.exception.HanjariException;
+import io.github.zemiles.hanjari.member.repository.MemberRepository;
+import io.github.zemiles.hanjari.support.TestcontainersConfiguration;
+
+@DataJpaTest
+@Transactional(propagation = Propagation.NOT_SUPPORTED) // 테스트 트랜잭션을 끈다: 각 스레드가 직접 커밋해야 서로의 데이터를 본다
+@DisplayName("MemberService 동시 가입 테스트")
+@Import({TestcontainersConfiguration.class, JpaConfig.class, ClockConfig.class, MemberService.class})
+public class MemberServiceConcurrencyTest {
+
+	private final MemberService memberService;
+
+	private final MemberRepository memberRepository;
+
+	@Autowired
+	public MemberServiceConcurrencyTest(MemberService memberService, MemberRepository memberRepository) {
+		this.memberService = memberService;
+		this.memberRepository = memberRepository;
+	}
+
+	// 테스트 트랜잭션이 없어서 롤백되지 않는다. 테스트가 끝날 때마다 직접 지운다
+	@AfterEach
+	void cleanUp() {
+		memberRepository.deleteAllInBatch();
+	}
+
+	@RepeatedTest(5)
+	@DisplayName("다른 두 사람이 같은 닉네임으로 동시에 가입하면 한 명만 성공하고 나머지는 MEMBER_NICKNAME_DUPLICATED")
+	void sameNicknameAtSameTime() throws InterruptedException {
+		List<Throwable> failures = runAtSameTime(
+			() -> memberService.signup(1L, "홍길동"),
+			() -> memberService.signup(2L, "홍길동"));
+
+		assertThat(failures).hasSize(1);
+		assertErrorType(failures.get(0), ErrorType.MEMBER_NICKNAME_DUPLICATED);
+		assertThat(memberRepository.count()).isEqualTo(1);
+	}
+
+	@RepeatedTest(5)
+	@DisplayName("같은 카카오 계정으로 동시에 두 번 가입하면 한 번만 성공하고 나머지는 MEMBER_ALREADY_REGISTERED")
+	void sameKakaoAccountAtSameTime() throws InterruptedException {
+		// 닉네임을 다르게 넣어서 닉네임 제약이 아니라 카카오 회원번호 쪽이 걸리게 한다
+		List<Throwable> failures = runAtSameTime(
+			() -> memberService.signup(1L, "홍길동"),
+			() -> memberService.signup(1L, "김철수"));
+
+		assertThat(failures).hasSize(1);
+		assertErrorType(failures.get(0), ErrorType.MEMBER_ALREADY_REGISTERED);
+		assertThat(memberRepository.count()).isEqualTo(1);
+	}
+
+	// 작업들을 동시에 출발시키고, 실패한 작업의 예외만 모아서 돌려준다
+	private List<Throwable> runAtSameTime(Callable<?>... tasks) throws InterruptedException {
+		CountDownLatch ready = new CountDownLatch(tasks.length); // 모든 스레드가 출발선에 섰는지
+		CountDownLatch start = new CountDownLatch(1); // 출발 신호
+		List<Future<?>> futures = new ArrayList<>();
+
+		try (ExecutorService executor = Executors.newFixedThreadPool(tasks.length)) {
+			for (Callable<?> task : tasks) {
+				futures.add(executor.submit(() -> {
+					ready.countDown();
+					start.await();
+					return task.call();
+				}));
+			}
+			ready.await();
+			start.countDown();
+		} // try 블록이 끝날 때 모든 작업이 끝날 때까지 기다린다
+
+		List<Throwable> failures = new ArrayList<>();
+		for (Future<?> future : futures) {
+			try {
+				future.get();
+			} catch (ExecutionException exception) {
+				failures.add(exception.getCause());
+			}
+		}
+		return failures;
+	}
+
+	// HanjariException이고, 그 ErrorType이 기대한 값인지 확인
+	private void assertErrorType(Throwable failure, ErrorType expected) {
+		assertThat(failure).isInstanceOfSatisfying(HanjariException.class,
+			exception -> assertThat(exception.getErrorType()).isEqualTo(expected));
+	}
+}
