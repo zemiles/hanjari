@@ -1,6 +1,5 @@
 package io.github.zemiles.hanjari.member.repository;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +16,4 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
 	/** 이 상태(예: ACTIVE)의 회원 중 같은 닉네임이 있는지 */
 	boolean existsByNicknameAndStatus(String nickname, MemberStatus status);
-
-	List<Member> findByNickname(String nickname);
 }

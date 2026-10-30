@@ -3,8 +3,6 @@ package io.github.zemiles.hanjari.member.service;
 import java.util.Map;
 import java.util.Optional;
 
-import org.hibernate.exception.ConstraintViolationException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +47,7 @@ public class MemberService {
 		String normalized = NicknameRule.normalize(nickname);
 
 		if (memberRepository.existsByNicknameAndStatus(normalized, MemberStatus.ACTIVE)) {
-			throw new HanjariException(ErrorType.MEMBER_NICKNAME_DUPLICATED, Map.of("nickname", normalized));
+			throw new HanjariException(ErrorType.MEMBER_NICKNAME_DUPLICATED, Map.of());
 		}
 
 		Member member;
@@ -61,24 +59,6 @@ public class MemberService {
 			member = Member.join(kakaoId, normalized);
 		}
 
-		try {
-			return memberRepository.saveAndFlush(member);
-		} catch (DataIntegrityViolationException exception) {
-			throw translate(exception);
-		}
-	}
-
-	// DB 제약 위반을 회원 에러로 바꾼다. 예상하지 못한 제약이면 그대로 둔다(500)
-	private RuntimeException translate(DataIntegrityViolationException exception) {
-		String constraint = exception.getCause() instanceof ConstraintViolationException violation
-			? violation.getConstraintName() : null;
-
-		if ("uk_member_nickname_active".equals(constraint)) {
-			return new HanjariException(ErrorType.MEMBER_NICKNAME_DUPLICATED, Map.of(), exception);
-		}
-		if ("uk_member_kakao_id".equals(constraint)) {
-			return new HanjariException(ErrorType.MEMBER_ALREADY_REGISTERED, Map.of(), exception);
-		}
-		return exception;
+		return memberRepository.saveAndFlush(member);
 	}
 }

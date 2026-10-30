@@ -2,13 +2,16 @@ package io.github.zemiles.hanjari.common.exception;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.sql.SQLException;
 import java.util.Map;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -93,6 +96,24 @@ public class GlobalExceptionHandlerTest {
 		assertThat(result).bodyText().doesNotContain("내부 정보");
 	}
 
+	@Test
+	@DisplayName("표에 있는 DB 제약 위반은 그 ErrorType으로 응답하고 제약 이름은 응답에 넣지 않는다")
+	void handleMappedConstraintViolation() {
+		MvcTestResult result = mvc.get().uri("/test/constraint/mapped").exchange();
+
+		assertErrorResponse(result, ErrorType.MEMBER_NICKNAME_DUPLICATED);
+		assertThat(result).bodyText().doesNotContain("uk_member_nickname_active");
+	}
+
+	@Test
+	@DisplayName("표에 없는 DB 제약 위반은 DB_ERROR로 응답하고 제약 이름은 응답에 넣지 않는다")
+	void handleUnmappedConstraintViolation() {
+		MvcTestResult result = mvc.get().uri("/test/constraint/unmapped").exchange();
+
+		assertErrorResponse(result, ErrorType.DB_ERROR);
+		assertThat(result).bodyText().doesNotContain("uk_unknown");
+	}
+
 	// 응답 상태와 JSON의 status, code, message가 ErrorType과 같은지 본다
 	private void assertErrorResponse(MvcTestResult result, ErrorType errorType) {
 		assertThat(result).hasStatus(errorType.getStatus());
@@ -118,6 +139,24 @@ public class GlobalExceptionHandlerTest {
 		@GetMapping("/test/unexpected")
 		void unexpected() {
 			throw new IllegalStateException("내부 정보");
+		}
+
+		@GetMapping("/test/constraint/mapped")
+		void mappedConstraint() {
+			throw constraintViolation("uk_member_nickname_active");
+		}
+
+		@GetMapping("/test/constraint/unmapped")
+		void unmappedConstraint() {
+			throw constraintViolation("uk_unknown");
+		}
+
+		// 스프링이 DB 제약 위반을 바꿔 주는 모양 그대로 만든다: 원인에 Hibernate 예외와 제약 이름이 있다
+		private DataIntegrityViolationException constraintViolation(String constraintName) {
+			String message = "duplicate key value violates unique constraint \"" + constraintName + "\"";
+			ConstraintViolationException cause = new ConstraintViolationException(
+				message, new SQLException(message, "23505"), constraintName);
+			return new DataIntegrityViolationException(message, cause);
 		}
 	}
 

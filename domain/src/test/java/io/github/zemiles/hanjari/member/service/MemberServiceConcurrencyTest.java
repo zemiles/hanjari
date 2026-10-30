@@ -17,11 +17,13 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.zemiles.hanjari.common.config.ClockConfig;
 import io.github.zemiles.hanjari.common.config.JpaConfig;
+import io.github.zemiles.hanjari.common.exception.DbConstraints;
 import io.github.zemiles.hanjari.common.exception.ErrorType;
 import io.github.zemiles.hanjari.common.exception.HanjariException;
 import io.github.zemiles.hanjari.member.repository.MemberRepository;
@@ -103,8 +105,13 @@ public class MemberServiceConcurrencyTest {
 		return failures;
 	}
 
-	// HanjariException이고, 그 ErrorType이 기대한 값인지 확인
+	// 사전 확인에서 걸리면 HanjariException, 정말 동시에 들어와 DB 제약에서 걸리면 DataIntegrityViolationException이 온다.
+	// 어느 쪽이든 같은 ErrorType으로 응답하는지 확인 (DB 제약 쪽은 GlobalExceptionHandler가 DbConstraints로 바꾼다)
 	private void assertErrorType(Throwable failure, ErrorType expected) {
+		if (failure instanceof DataIntegrityViolationException violation) {
+			assertThat(DbConstraints.errorTypeOf(violation)).contains(expected);
+			return;
+		}
 		assertThat(failure).isInstanceOfSatisfying(HanjariException.class,
 			exception -> assertThat(exception.getErrorType()).isEqualTo(expected));
 	}
