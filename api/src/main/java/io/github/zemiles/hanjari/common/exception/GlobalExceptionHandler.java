@@ -1,7 +1,9 @@
 package io.github.zemiles.hanjari.common.exception;
 
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -66,5 +68,19 @@ public class GlobalExceptionHandler {
 	// ErrorType에 정한 로그 레벨로 남긴다
 	private void logAt(ErrorType errorType, String detail) {
 		log.atLevel(errorType.getLogLevel()).log("[{}] {}", errorType.name(), detail);
+	}
+
+	// DB 제약 위반: 표에 있으면 그 에러로, 없으면 DB_ERROR(코드 실수라 눈에 띄게)
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+		String constraint = DbConstraints.violatedName(exception);
+		Optional<ErrorType> errorType = DbConstraints.errorTypeOf(exception);
+
+		if (errorType.isPresent()) {
+			logAt(errorType.get(), "constraint=" + constraint);
+			return toResponse(errorType.get());
+		}
+		log.error("[{}] 처리하지 못한 DB 제약 위반 constraint={}", ErrorType.DB_ERROR.name(), constraint, exception);
+		return toResponse(ErrorType.DB_ERROR);
 	}
 }
