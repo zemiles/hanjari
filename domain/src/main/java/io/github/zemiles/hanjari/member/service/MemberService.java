@@ -37,7 +37,7 @@ public class MemberService {
 	@Transactional
 	public Member signup(Long kakaoId, String nickname) {
 
-		Optional<Member> byKakaoId = memberRepository.findByKakaoId(kakaoId);
+		Optional<Member> byKakaoId = memberRepository.findForSignupByKakaoId(kakaoId);
 
 		if (byKakaoId.isPresent() && byKakaoId.get().getStatus() == MemberStatus.ACTIVE) {
 			throw new HanjariException(ErrorType.MEMBER_ALREADY_REGISTERED,
